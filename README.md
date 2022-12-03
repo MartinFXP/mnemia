@@ -108,4 +108,4 @@ of Nested Effects Models, Bioinformatics, Volume 34, Issue 17, 1 September
 2018,
 Pages i964-i971, https://doi.org/10.1093/bioinformatics/bty602.
 
-Pirkl, M., Büch, J., Devaux, C., Böhm, M., Sönnerborg, A., Incardona, F., Abecasis, A., Vandamme, A.-M., Zazzi, M., Kaiser, R., Lengauer, T. and the EuResist Network study group. 2022. Analysis of mutational history of multi drug resistant genotypes with a mutagenetic tree model. _submitted_
+Pirkl, M., Büch, J., Devaux, C., Böhm, M., Sönnerborg, A., Incardona, F., Abecasis, A., Vandamme, A.-M., Zazzi, M., Kaiser, R., Lengauer, T. and the EuResist Network study group. 2022. Analysis of mutational history of multi-drug resistant genotypes with a mutagenetic tree model. Journal of Medical Virology. _accepted_
