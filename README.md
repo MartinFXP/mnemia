@@ -7,7 +7,7 @@ src/mnemia.jl contains all functions for inference and a function to simulate da
 ## Install/usage:
 
 mnemia is not available as a full julia package, but you can activate it within
-its directory in the pkg environment.
+its directory (cd("path")) in the pkg environment (] key).
 
 ```
 activate .
@@ -19,6 +19,7 @@ Create data from four networks with five genes, ten effectors per gene and 100 s
 
 ```julia
 import mnemia as mn
+using Plots
 
 n = 5
 K = 4
