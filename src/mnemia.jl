@@ -130,7 +130,7 @@ function score(phi, R, rho)
 end
 
 function greedy(R, rho, phi = nothing, tree = false)
-    if phi == nothing
+    if phi === nothing
         phi = transitiveClosure(zeros(size(rho)[1],size(rho)[1]))
     end
     llold = -Inf
@@ -188,19 +188,46 @@ end
 
 function oll(gamma, pi)
     y = exp.(gamma)
-    y = transpose(y) * pi
+    y = y .* pi
     ll = sum(log.(y))
     ll
 end
 
-function mnem(R, rho, k = 1, maxiter = 100, tree = false)
+function norm(x)
+    xmax = maximum(x)
+    maxnum = 2^1023.3
+    shrinkfac = log(maxnum)
+    x = x .- (xmax - shrinkfac/length(x))
+    x
+end
+
+function norm2(x)
+    x = x/sum(x)
+    x
+end
+
+function cll(gamma, pi)
+    y = mapslices(norm, gamma; dims=1)
+    y = exp.(gamma)
+    y = y .* pi
+    y = mapslices(norm2, y; dims=1)
+    y = y .* (gamma .+ log.(pi))
+    ll = sum(mapslices(sum, y; dims=1))
+    ll
+end
+
+function mnem(R, rho, k = 1, maxiter = 100, tree = false, complete = false)
     s = size(rho)[1]
     phis = sim(k,s,1,1,0.5,tree)[1]
     pi = repeat([1/k],k)
     gamma = ones(k,size(R)[2])/k
     gamma = resp(phis,R,rho,gamma)
     llold = -Inf
-    ll = oll(gamma,pi)
+    if (complete)
+        ll = cll(gamma,pi)
+    else
+        ll = oll(gamma,pi)
+    end
     lls = ll
     iter = 0
     while llold < ll && iter < maxiter
@@ -215,7 +242,11 @@ function mnem(R, rho, k = 1, maxiter = 100, tree = false)
             phis[:,:,i] = greedy(Rw, rho, phis[:,:,i], tree)
         end
         gamma = resp(phis,R,rho,gammaW)
-        ll = oll(gamma,pi)
+        if (complete)
+            ll = cll(gamma,pi)
+        else
+            ll = oll(gamma,pi)
+        end
         lls = hcat(lls,ll)
     end
     return phis, lls, gamma, pi, tree
