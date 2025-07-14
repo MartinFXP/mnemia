@@ -173,9 +173,6 @@ function greedy(R, rho, phi = nothing, tree = false)
 end
 
 function resp(phis, R, rho, gamma, complete=false)
-    if (complete)
-        gamma = mapslices(norm, gamma; dims=1)
-    end
     for i in 1:size(phis)[3]
         Rw = R.*transpose(gamma[i,:])
         phi = phis[:,:,i]
@@ -185,6 +182,9 @@ function resp(phis, R, rho, gamma, complete=false)
             theta[findmax(S[i,:])[2],i] = sb.sample([1],)
         end
         gamma[i,:] = sb.diag(transpose(rho) * phi * theta * R)
+    end
+    if (complete)
+        gamma = mapslices(norm, gamma; dims=1)
     end
     gamma
 end
@@ -207,7 +207,7 @@ function cll(gamma, pi)
     y = exp.(y)
     y = y .* pi
     y = mapslices(norm2, y; dims=1)
-    y = y .* (y .+ log.(pi))
+    y = y .* (gamma .+ log.(pi))
     ll = sum(mapslices(sum, y; dims=1))
     ll
 end
@@ -236,7 +236,7 @@ function mnem(R, rho, k = 1, maxiter = 100, tree = false, complete = false)
     while llold < ll && iter < maxiter
         iter = iter + 1
         llold = ll
-        gammaW = exp.(mapslices(norm, gamma; dims=1)).*pi
+        gammaW = exp.(gamma).*pi
         gammaW = gammaW./transpose(transpose(gammaW)*repeat([1],k))
         pi = gammaW*repeat([1],size(gammaW)[2])
         pi = pi./sum(pi)
