@@ -172,7 +172,10 @@ function greedy(R, rho, phi = nothing, tree = false)
     phi
 end
 
-function resp(phis, R, rho, gamma)
+function resp(phis, R, rho, gamma, complete=false)
+    if (complete)
+        gamma = mapslices(norm, gamma; dims=1)
+    end
     for i in 1:size(phis)[3]
         Rw = R.*transpose(gamma[i,:])
         phi = phis[:,:,i]
@@ -201,10 +204,10 @@ end
 
 function cll(gamma, pi)
     y = mapslices(norm, gamma; dims=1)
-    y = exp.(gamma)
+    y = exp.(y)
     y = y .* pi
     y = mapslices(norm2, y; dims=1)
-    y = y .* (gamma .+ log.(pi))
+    y = y .* (y .+ log.(pi))
     ll = sum(mapslices(sum, y; dims=1))
     ll
 end
@@ -221,19 +224,19 @@ function mnem(R, rho, k = 1, maxiter = 100, tree = false, complete = false)
     phis = sim(k,s,1,1,0.5,tree)[1]
     pi = repeat([1/k],k)
     gamma = ones(k,size(R)[2])/k
-    gamma = resp(phis,R,rho,gamma)
-    llold = -Inf
+    gamma = resp(phis,R,rho,gamma,complete)
     if (complete)
         ll = cll(gamma,pi)
     else
         ll = oll(gamma,pi)
     end
+    llold = -Inf
     lls = ll
     iter = 0
     while llold < ll && iter < maxiter
         iter = iter + 1
         llold = ll
-        gammaW = exp.(gamma).*pi
+        gammaW = exp.(mapslices(norm, gamma; dims=1)).*pi
         gammaW = gammaW./transpose(transpose(gammaW)*repeat([1],k))
         pi = gammaW*repeat([1],size(gammaW)[2])
         pi = pi./sum(pi)
@@ -241,7 +244,7 @@ function mnem(R, rho, k = 1, maxiter = 100, tree = false, complete = false)
             Rw = R.*transpose(gammaW[i,:])
             phis[:,:,i] = greedy(Rw, rho, phis[:,:,i], tree)
         end
-        gamma = resp(phis,R,rho,gammaW)
+        gamma = resp(phis,R,rho,gammaW,complete)
         if (complete)
             ll = cll(gamma,pi)
         else
@@ -249,7 +252,7 @@ function mnem(R, rho, k = 1, maxiter = 100, tree = false, complete = false)
         end
         lls = hcat(lls,ll)
     end
-    return phis, lls, gamma, pi, tree
+    return phis, lls, gamma, pi, tree, complete
 end
 
 function plotMix(x)
