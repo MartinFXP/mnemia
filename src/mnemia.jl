@@ -186,13 +186,6 @@ function resp(phis, R, rho, gamma)
     gamma
 end
 
-function oll(gamma, pi)
-    y = exp.(gamma)
-    y = y .* pi
-    ll = sum(log.(y))
-    ll
-end
-
 function norm(x)
     xmax = maximum(x)
     maxnum = 2^1023.3
@@ -213,6 +206,13 @@ function cll(gamma, pi)
     y = mapslices(norm2, y; dims=1)
     y = y .* (gamma .+ log.(pi))
     ll = sum(mapslices(sum, y; dims=1))
+    ll
+end
+
+function oll(gamma, pi)
+    y = exp.(gamma)
+    y = y .* pi
+    ll = sum(log.(mapslices(sum,y;dims=1)))
     ll
 end
 
