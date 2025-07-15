@@ -183,9 +183,6 @@ function resp(phis, R, rho, gamma, complete=false)
         end
         gamma[i,:] = sb.diag(transpose(rho) * phi * theta * R)
     end
-    if (complete)
-        gamma = mapslices(norm, gamma; dims=1)
-    end
     gamma
 end
 
@@ -236,6 +233,9 @@ function mnem(R, rho, k = 1, maxiter = 100, tree = false, complete = false)
     while llold < ll && iter < maxiter
         iter = iter + 1
         llold = ll
+        if (complete)
+            gamma=mapslices(norm, gamma; dims=1)
+        end
         gammaW = exp.(gamma).*pi
         gammaW = gammaW./transpose(transpose(gammaW)*repeat([1],k))
         pi = gammaW*repeat([1],size(gammaW)[2])
