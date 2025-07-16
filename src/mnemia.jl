@@ -348,4 +348,47 @@ function transformData(D, fpr = 0.01, fnr = 0.1)
     R
 end
 
+# https://turinglang.org/docs/getting-started/
+
+function samplePhis(phis)
+    phisnew=copy(phis)
+    for i in 1:length(phis)
+        move=rand((1:2))
+        if move==1
+            ycord=rand((1:size(phis[i])[1]))
+            xcord=rand((1:size(phis[i])[2]))
+            while xcord==ycord
+                xcord=rand((1:size(phis[i])[2]))
+            end
+            phisnew[1]=copy(phis[i])
+            phisnew[1][ycord,xcord]=1-phisnew[1][ycord,xcord]
+        end
+        if move==2
+            ycord=rand((1:size(phis[i])[1]))
+            xcord=rand((1:size(phis[i])[2]))
+            while xcord==ycord
+                xcord=rand((1:size(phis[i])[2]))
+            end
+            phisnew[1]=copy(phis[i])
+            phisnew[1][ycord,xcord]=0
+            phisnew[1][xcord,ycord]=1
+        end
+    end
+    phisnew
+end
+
+function sampleThetas(phis,R,rho,gamma)
+    for i in 1:size(phis)[3]
+        Rw = R.*transpose(gamma[i,:])
+        phi = phis[:,:,i]
+        S = Rw * transpose(rho) * phi
+        theta = zeros(size(phi)[1],size(R)[1])
+        for i in 1:size(R)[1]
+            theta[findmax(S[i,:])[2],i] = sb.sample([1],)
+        end
+        gamma[i,:] = sb.diag(transpose(rho) * phi * theta * R)
+    end
+    theta
+end
+
 end
