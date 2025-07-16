@@ -378,6 +378,7 @@ function samplePhis(phis)
 end
 
 function sampleThetas(phis,R,rho,gamma)
+    thetas=[]
     for i in 1:size(phis)[3]
         Rw = R.*transpose(gamma[i,:])
         phi = phis[:,:,i]
@@ -387,8 +388,13 @@ function sampleThetas(phis,R,rho,gamma)
             theta[findmax(S[i,:])[2],i] = sb.sample([1],)
         end
         gamma[i,:] = sb.diag(transpose(rho) * phi * theta * R)
+        push!(thetas,theta)
     end
-    theta
+    thetas
+end
+
+function mcmc(R, rho, k = 1, iters = 1000, burnin = 100, tree = false, complete = false)
+    
 end
 
 end

@@ -59,11 +59,36 @@ for i in 1:10
     end
     print(i)
 end
-best[1]
-truth[1]
 p1 = mn.plotMix(best)
 p2 = plot(lll)
 plot(p1, p2, layout = (1,2))
+```
+
+As a superficial way of computing the accuracy, we can make a pairwise network comparison.
+
+```julia
+for i in 1:10
+    result = mn.mnem(R, rho, K)
+    ll = findmax(result[2])[1]
+    lll = push!(lll, result[2][1,:])
+    lls = hcat(lls,ll)
+    if ll > bestll
+        best = result
+        bestll = ll
+    end
+    print(i)
+end
+plot(lll)
+for i in 1:size(best[1])[3]
+    for j in 1:size(truth[1])[3]
+        print(i)
+        print("\t")
+        print(j)
+        print("\t")
+        print(sum(abs.(vec(best[1][:,:,i])-vec(truth[1][:,:,j]))))
+        print("\n")
+    end
+end
 ```
 
 Depending on noise and complexity of the ground truth even more runs are advised. If
