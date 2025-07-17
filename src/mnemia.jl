@@ -46,21 +46,6 @@ function transitiveReduction(m::Matrix)
     new
 end
 
-function makeLikeTree(phi)
-    tree = copy(phi)
-    tree[la.diagind(tree)] = repeat([0],size(phi)[1])
-    for i in 1:size(tree)[2]
-        idx1 = findall(>(0),tree[:,i])
-        if size(idx1)[1]>0
-            parent = sb.sample(idx1,1)
-            tree[:,i] = repeat([0],size(tree)[1])
-            tree[parent,i] = [1]
-        end
-    end
-    tree = transitiveClosure(tree)
-    tree
-end
-
 function sim(k = 2, s = 5, e = 2, n = 10, p = 0.1, tree = false)
     phis = zeros(s,s,k)
     m = e*s
@@ -141,9 +126,31 @@ function addClassNodes(x,y)
     xnew
 end
 
-function greedy(R, rho, phi = nothing, tree = false, forbid=nothing, force=nothing)
+function makeLikeTree(phi)
+    tree=copy(phi)
+    treesums=vec(sum(tree,dims=2))
+    idx=reverse(sortperm(treesums))
+    tree=tree[idx,idx]
+    tree[la.tril!(trues(size(tree)),-1)].=0
+    idx=1:length(idx).==idx
+    tree=tree[idx,idx]
+    tree[la.diagind(tree)] = repeat([0],size(phi)[1])
+    for i in 1:size(tree)[2]
+        idx1 = findall(>(0),tree[:,i])
+        if size(idx1)[1]>0
+            parent = sb.sample(idx1,1)
+            tree[:,i] = repeat([0],size(tree)[1])
+            tree[parent,i] = [1]
+        end
+    end
+    tree
+end
+
+function greedy(R, rho, starts = 10, threads = 1, tree = false, phi = nothing, forbid=nothing, force=nothing)
     if phi === nothing
         phi = transitiveClosure(zeros(size(rho)[1],size(rho)[1]))
+    else
+        starts=1
     end
     if forbid==nothing
         forbid=copy(R).*0
@@ -151,49 +158,68 @@ function greedy(R, rho, phi = nothing, tree = false, forbid=nothing, force=nothi
     if force==nothing
         force=copy(R).*0
     end
-    llold = -Inf
-    ll = score(phi,R,rho)[1]
-    while ll > llold
-        llold = ll
-        phiscore = phi*0
-        phiscore[:,:] = repeat([-Inf],size(phi)[1]^2)
-        for i in 1:size(phi)[1]
-            for j in 1:size(phi)[2]
-                if i != j
-                    phinew = copy(phi)
-                    if tree
-                        phinew = transitiveReduction(phinew)
-                        if phinew[i,j] == 0
-                            phinew[:,j] = repeat([0],size(phinew)[1])
-                            phinew[j,i] = 0
-                        end
-                    end
-                    phinew[i,j] = 1 - phinew[i,j]
-                    if force[i,j]==1
-                        phinew[i,j]=1
-                    end
-                    if forbid[i,j]==1
-                        phinew[i,j]=0
-                    end
-                    phiscore[i,j] = score(transitiveClosure(phinew),R,rho)[1]
-                end
-            end
-        end
-        ll = findmax(phiscore)
-        if ll[1]>llold
+    bestll=-Inf
+    bestphi=copy(phi)
+    Threads.@threads for run in 1:starts
+        if run>1
+            phi=transitiveReduction(rand(0:1,size(phi)[1],size(phi)[1]))
             if tree
-                phi = transitiveReduction(phi)
-                if phi[ll[2]] == 0
-                    phi[:,ll[2][2]] = repeat([0],size(phi)[1])
-                    phi[ll[2][2],ll[2][1]] = 0
+                phi=makeLikeTree(phi)
+            end
+            phi[findall(forbid.==1)].=0
+            phi[findall(force.==1)].=1
+        end
+        llold = -Inf
+        ll = score(phi,R,rho)[1]
+        while ll > llold
+            llold = ll
+            phiscore = phi*0
+            phiscore = convert(Matrix{Float32},phiscore)
+            phiscore[:,:] = repeat([-Inf],size(phi)[1]^2)
+            for i in 1:size(phi)[1]
+                for j in 1:size(phi)[2]
+                    if i != j
+                        phinew = copy(phi)
+                        if tree
+                            phinew = transitiveReduction(phinew)
+                            if phinew[i,j] == 0
+                                phinew[:,j] = repeat([0],size(phinew)[1])
+                                phinew[j,i] = 0
+                            end
+                        end
+                        phinew[i,j] = 1 - phinew[i,j]
+                        if force[i,j]==1
+                            phinew[i,j]=1
+                        end
+                        if forbid[i,j]==1
+                            phinew[i,j]=0
+                        end
+                        phiscore[i,j] = score(transitiveClosure(phinew),R,rho)[1]
+                    end
                 end
             end
-            phi[ll[2]] = 1 - phi[ll[2]]
-            phi = transitiveClosure(phi)
+            ll = findmax(phiscore)
+            if ll[1]>llold
+                if tree
+                    phi = transitiveReduction(phi)
+                    if phi[ll[2]] == 0
+                        phi[:,ll[2][2]] = repeat([0],size(phi)[1])
+                        phi[ll[2][2],ll[2][1]] = 0
+                    end
+                end
+                phi[ll[2]] = 1 - phi[ll[2]]
+                phi = transitiveClosure(phi)
+            end
+            ll = ll[1]
         end
-        ll = ll[1]
+        if ll>bestll
+            bestll=ll
+            bestphi=copy(phi)
+        end
     end
-    return phi, ll
+    bestphi[findall(forbid.==1)].=0
+    bestphi[findall(force.==1)].=1
+    return bestphi, bestll
 end
 
 function plotNEM(G,tree=false,col=nothing,resolution=(2048,2048))
