@@ -64,7 +64,7 @@ p2 = plot(lll)
 plot(p1, p2, layout = (1,2))
 ```
 
-As a superficial way of computing the accuracy, we can make a pairwise network comparison.
+As a superficial way of computing the accuracy, we can make a pairwise network comparison by looking at the difference.
 
 ```julia
 for i in 1:10

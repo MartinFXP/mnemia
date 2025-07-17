@@ -125,16 +125,34 @@ function score(phi, R, rho)
         theta[findmax(S[i,:])[2],i] = sb.sample([1],)
     end
     S = theta * S
+    Escore=maximum(S;dims=2)
     S = sum(sb.diag(S))
-    S
+    return S, Escore
 end
 
-function greedy(R, rho, phi = nothing, tree = false)
+function addClassNodes(x,y)
+    class1=sum(x[:,y.==1],dims=2)
+    class0=sum(x[:,y.==0],dims=2)
+    class1[class1.>class0].=1
+    class0[class0.>class1].=1
+    class1[class1.>0].=1
+    class0[class0.>0].=1
+    xnew=hcat(class1,class0,copy(x))
+    xnew
+end
+
+function greedy(R, rho, phi = nothing, tree = false, forbid=nothing, force=nothing)
     if phi === nothing
         phi = transitiveClosure(zeros(size(rho)[1],size(rho)[1]))
     end
+    if forbid==nothing
+        forbid=copy(R).*0
+    end
+    if force==nothing
+        force=copy(R).*0
+    end
     llold = -Inf
-    ll = score(phi,R,rho)
+    ll = score(phi,R,rho)[1]
     while ll > llold
         llold = ll
         phiscore = phi*0
@@ -151,7 +169,13 @@ function greedy(R, rho, phi = nothing, tree = false)
                         end
                     end
                     phinew[i,j] = 1 - phinew[i,j]
-                    phiscore[i,j] = score(transitiveClosure(phinew),R,rho)
+                    if force[i,j]==1
+                        phinew[i,j]=1
+                    end
+                    if forbid[i,j]==1
+                        phinew[i,j]=0
+                    end
+                    phiscore[i,j] = score(transitiveClosure(phinew),R,rho)[1]
                 end
             end
         end
@@ -169,7 +193,36 @@ function greedy(R, rho, phi = nothing, tree = false)
         end
         ll = ll[1]
     end
-    phi
+    return phi, ll
+end
+
+function plotNEM(G,tree=false,col=nothing,resolution=(2048,2048))
+    n = size(G)[1]
+    if col==nothing
+        nodecol = [rgba.RGBA{Float64}(1, 0, 0, 0.5)]
+        for i in 2:n
+            nodecol = hcat(nodecol,rgba.RGBA{Float64}(1, 0, 0, 0.5))
+        end
+    else
+        nodecol=col
+    end
+    G = transitiveReduction(G)
+    G[la.diagind(G)].=0
+    method = :stress # circular/shell or stress?
+    Gnames = 1:n
+    if tree
+        G = vcat(transpose(repeat([1],size(G)[2]+1)),hcat(repeat([0],size(G)[1]),G))
+        kids = findall(>(1),sum(eachrow(G)))
+        G[1,kids] = repeat([0],size(kids)[1])
+        G[1,1] = 0
+        Gnames = ("root",Gnames...)
+        nodecol = hcat(rgba.RGBA{Float64}(1,1,1,1),nodecol)
+        method = :buchheim
+    end
+    nodecol = nodecol[1,:]
+    p1 = gr.graphplot(G, names=Gnames, markercolor=nodecol,
+    fontsize=10, nodeshape=:circle, method=method)
+    pl.plot(p1, layout=(1,1), size=resolution)
 end
 
 function resp(phis, R, rho, gamma, complete=false)
@@ -242,7 +295,7 @@ function mnem(R, rho, k = 1, maxiter = 100, tree = false, complete = false)
         pi = pi./sum(pi)
         for i in 1:k
             Rw = R.*transpose(gammaW[i,:])
-            phis[:,:,i] = greedy(Rw, rho, phis[:,:,i], tree)
+            phis[:,:,i] = greedy(Rw, rho, phis[:,:,i], tree)[1]
         end
         gamma = resp(phis,R,rho,gammaW,complete)
         if (complete)
@@ -396,5 +449,7 @@ end
 function mcmc(R, rho, k = 1, iters = 1000, burnin = 100, tree = false, complete = false)
     
 end
+
+
 
 end
