@@ -241,7 +241,8 @@ function plotNEM(G,tree=false,col=nothing,resolution=(2048,2048))
     end
     G = transitiveReduction(G)
     G[la.diagind(G)].=0
-    method = :stress # circular/shell or stress?
+    # `:spectral`, `:sfdp`, `:circular`, `:shell`, `:stress`, `:spring`, `:tree`, `:buchheim`, `:arcdiagram` or `:chorddiagram`
+    method = :sfdp # circular/shell or stress?
     Gnames = 1:n
     if tree
         G = vcat(transpose(repeat([1],size(G)[2]+1)),hcat(repeat([0],size(G)[1]),G))
