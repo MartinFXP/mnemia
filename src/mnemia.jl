@@ -104,7 +104,7 @@ function addNoise(D, mu = 1, sigma = 1)
 end
 
 function score(phi, R, rho)
-    S = R * transpose(rho) * phi
+    S = R * transpose(rho) * transitiveClosure(phi)
     theta = zeros(size(phi)[1],size(R)[1])
     for i in 1:size(R)[1]
         theta[findmax(S[i,:])[2],i] = sb.sample([1],)
@@ -132,8 +132,7 @@ function makeLikeTree(phi)
     idx=reverse(sortperm(treesums))
     tree=tree[idx,idx]
     tree[la.tril!(trues(size(tree)),-1)].=0
-    idx=1:length(idx).==idx
-    tree=tree[idx,idx]
+    tree=tree[sortperm(idx),sortperm(idx)]
     tree[la.diagind(tree)] = repeat([0],size(phi)[1])
     for i in 1:size(tree)[2]
         idx1 = findall(>(0),tree[:,i])
@@ -153,13 +152,15 @@ function greedy(R, rho, starts = 10, threads = 1, tree = false, phi = nothing, f
         starts=1
     end
     if forbid==nothing
-        forbid=copy(R).*0
+        forbid=copy(phi).*0
     end
     if force==nothing
-        force=copy(R).*0
+        force=copy(phi).*0
     end
     bestll=-Inf
     bestphi=copy(phi)
+    lls=[]
+    phis=[]
     Threads.@threads for run in 1:starts
         if run>1
             phi=transitiveReduction(rand(0:1,size(phi)[1],size(phi)[1]))
@@ -194,7 +195,7 @@ function greedy(R, rho, starts = 10, threads = 1, tree = false, phi = nothing, f
                         if forbid[i,j]==1
                             phinew[i,j]=0
                         end
-                        phiscore[i,j] = score(transitiveClosure(phinew),R,rho)[1]
+                        phiscore[i,j] = score(phinew,R,rho)[1]
                     end
                 end
             end
@@ -208,18 +209,24 @@ function greedy(R, rho, starts = 10, threads = 1, tree = false, phi = nothing, f
                     end
                 end
                 phi[ll[2]] = 1 - phi[ll[2]]
+                if force[ll[2]]==1
+                    phi[ll[2]]=1
+                end
+                if forbid[ll[2]]==1
+                    phi[ll[2]]=0
+                end
                 phi = transitiveClosure(phi)
             end
             ll = ll[1]
         end
+        push!(lls,ll)
+        push!(phis,phi)
         if ll>bestll
             bestll=ll
             bestphi=copy(phi)
         end
     end
-    bestphi[findall(forbid.==1)].=0
-    bestphi[findall(force.==1)].=1
-    return bestphi, bestll
+    return bestphi, bestll, lls, phis
 end
 
 function plotNEM(G,tree=false,col=nothing,resolution=(2048,2048))
