@@ -126,6 +126,16 @@ function addClassNodes(x,y)
     xnew
 end
 
+function maxSpanTree(R)
+    tree=zeros(size(R)[2],size(R)[2])
+    for i in 1:size(R)[2]
+        for j in 1:size(R)[2]
+            tree[i,j]=transpose(R[:,i])*R[:,j]
+        end
+    end
+    
+end
+
 function makeLikeTree(phi)
     tree=copy(phi)
     treesums=vec(sum(tree,dims=2))
