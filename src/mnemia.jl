@@ -145,7 +145,7 @@ function makeLikeTree(phi)
     tree
 end
 
-function greedy(R, rho, starts = 10, threads = 1, tree = false, phi = nothing, forbid=nothing, force=nothing)
+function greedy(R, rho, phi = nothing, tree = false, starts = 10, threads = 1, forbid=nothing, force=nothing)
     if phi === nothing
         phi = transitiveClosure(zeros(size(rho)[1],size(rho)[1]))
     else
