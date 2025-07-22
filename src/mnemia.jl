@@ -63,6 +63,9 @@ function sim(k = 2, s = 5, e = 2, n = 10, p = 0.1, tree = false)
             phis[:,:,i] = makeLikeTree(phis[:,:,i])
         end
         idx = sb.sample(1:s,s,replace=false)
+        if s==n
+            idx=1:n
+        end
         phis[1:s,1:s,i] = phis[idx,idx,i]
         phis[1:s,1:s,i] = transitiveClosure(phis[1:s,1:s,i])
         for j in 1:m
@@ -83,6 +86,11 @@ function sim(k = 2, s = 5, e = 2, n = 10, p = 0.1, tree = false)
             nidx = s
         end
         rho[nidx,i] = 1
+    end
+    if s==n
+        rho=zeros(s,n)
+        rho[la.diagind(rho)].=1
+        sidx=1:n
     end
     D = D[:,sidx]
     return phis, thetas, rho, D
@@ -126,14 +134,46 @@ function addClassNodes(x,y)
     xnew
 end
 
-function maxSpanTree(R)
+function maxSpanTree(R,sparse=false)
+    thetamax=zeros(size(R)[1],size(R)[2])
+    if sparse
+        for i in 1:size(R)[1]
+            idx=findmax(R[i,:])
+            thetamax[i,idx[2]]=1
+        end
+    else
+        for i in 1:size(R)[2]
+            thetamax[findall(R[:,i].>0),i].=1
+        end
+    end
     tree=zeros(size(R)[2],size(R)[2])
     for i in 1:size(R)[2]
         for j in 1:size(R)[2]
-            tree[i,j]=transpose(R[:,i])*R[:,j]
+            tree[i,j]=transpose(R[:,i])*thetamax[:,j]
         end
     end
-    
+    tree[la.diagind(tree)].=0
+    tree[findall(tree.<0)].=0
+    phi=zeros(size(R)[2],size(R)[2])
+    for i in 1:(size(R)[2]-1)
+        if all(tree.<=0)
+            break
+        end
+        maxidx=findmax(tree)
+        phi[maxidx[2]]=1
+        phi=transitiveClosure(phi)
+        tree[maxidx[2]]=0
+        phi[la.diagind(phi)].=0
+        while maximum(phi+transpose(phi))>1 || sum(phi[:,maxidx[2][2]])>1
+            phi[maxidx[2]]=0
+            maxidx=findmax(tree)
+            phi[maxidx[2]]=1
+            phi=transitiveClosure(phi)
+            tree[maxidx[2]]=0
+            phi[la.diagind(phi)].=0
+        end
+    end
+    phi
 end
 
 function makeLikeTree(phi)
@@ -252,7 +292,7 @@ function plotNEM(G,tree=false,col=nothing,resolution=(2048,2048))
     G = transitiveReduction(G)
     G[la.diagind(G)].=0
     # `:spectral`, `:sfdp`, `:circular`, `:shell`, `:stress`, `:spring`, `:tree`, `:buchheim`, `:arcdiagram` or `:chorddiagram`
-    method = :sfdp # circular/shell or stress?
+    method = :stress # circular/shell or stress?
     Gnames = 1:n
     if tree
         G = vcat(transpose(repeat([1],size(G)[2]+1)),hcat(repeat([0],size(G)[1]),G))
