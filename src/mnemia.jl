@@ -123,13 +123,19 @@ function score(phi, R, rho)
     return S, Escore
 end
 
-function addClassNodes(x,y)
+function addClassNodes(x,y,sparse=false)
     class1=sum(x[:,y.==1],dims=2)
     class0=sum(x[:,y.==0],dims=2)
+    idx=findall(class0.>class1)
     class1[class1.>class0].=1
-    class0[class0.>class1].=1
-    class1[class1.>0].=1
-    class0[class0.>0].=1
+    class0[idx].=1
+    if sparse
+        class1[class1.>0].=0
+        class0[class0.>0].=0
+    else
+        class1[class1.>0].=1
+        class0[class0.>0].=1
+    end
     xnew=hcat(class1,class0,copy(x))
     xnew
 end
