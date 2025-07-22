@@ -134,8 +134,11 @@ function addClassNodes(x,y)
     xnew
 end
 
-function maxSpanTree(R,sparse=false)
+function maxSpanTree(R,sparse=false,forbid=nothing)
     thetamax=zeros(size(R)[1],size(R)[2])
+    if forbid==nothing
+        forbid=zeros(size(R)[2],size(R)[2])
+    end
     if sparse
         for i in 1:size(R)[1]
             idx=findmax(R[i,:])
@@ -164,13 +167,16 @@ function maxSpanTree(R,sparse=false)
         phi=transitiveClosure(phi)
         tree[maxidx[2]]=0
         phi[la.diagind(phi)].=0
-        while maximum(phi+transpose(phi))>1 || sum(phi[:,maxidx[2][2]])>1
+        while maximum(phi+transpose(phi))>1 || sum(phi[:,maxidx[2][2]])>1 || forbid[maxidx[2]]==1
             phi[maxidx[2]]=0
             maxidx=findmax(tree)
             phi[maxidx[2]]=1
             phi=transitiveClosure(phi)
             tree[maxidx[2]]=0
             phi[la.diagind(phi)].=0
+            if all(tree.<=0) 
+                break
+            end
         end
     end
     phi
@@ -196,7 +202,7 @@ function makeLikeTree(phi)
 end
 
 function greedy(R, rho, phi = nothing, tree = false, starts = 10, threads = 1, forbid=nothing, force=nothing)
-    if phi === nothing
+    if phi == nothing
         phi = transitiveClosure(zeros(size(rho)[1],size(rho)[1]))
     else
         starts=1
